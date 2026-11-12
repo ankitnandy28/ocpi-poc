@@ -1,0 +1,361 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "The OCPI 2.3.0 server of the learning project. It sits between the eMSP and the Mock CPO. Every reply uses the OCPI wrapper: status_code, status_message, timestamp, data.",
+        "title": "ocpi server api",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/ocpi/2.3.0": {
+            "get": {
+                "description": "no token needed. data is an object: version, plus endpoints (identifier, role, url) for credentials and locations.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "list modules of version 2.3.0",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ocpiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/ocpi/2.3.0/credentials": {
+            "get": {
+                "security": [
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "credentials"
+                ],
+                "summary": "this will get this server's credentials",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.ocpiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/credentials.Credentials"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or missing token (OCPI status 2004)",
+                        "schema": {
+                            "$ref": "#/definitions/main.ocpiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/ocpi/2.3.0/locations": {
+            "get": {
+                "security": [
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "description": "fetched all locations from the Mock CPO, keeps those inside the date range, then returns one page. The date filter uses the CPO's last_updated value, but the last_updated in each returned location is the time of this request. date_from and date_to are not copied into the Link header.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "locations"
+                ],
+                "summary": "list the locations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Only locations updated on or after this time. RFC 3339, for example 2025-01-01T00:00:00Z. A badly written value gives 400.",
+                        "name": "date_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only locations updated on or before this time. RFC 3339, for example 2025-01-01T00:00:00Z. A badly written value gives 400.",
+                        "name": "date_to",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 0,
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Number of locations to skip. Invalid values are ignored.",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Page size. Invalid values are ignored; values above 100 become 100.",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.ocpiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/main.ocpiLocation"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "headers": {
+                            "Link": {
+                                "type": "string",
+                                "description": "URLs of the next and previous pages, rel=next and rel=prev. Empty when everything fits on one page."
+                            },
+                            "X-Total-Count": {
+                                "type": "string",
+                                "description": "How many locations match, before paging"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid date_from or date_to (OCPI status 2001)",
+                        "schema": {
+                            "$ref": "#/definitions/main.ocpiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or missing token (OCPI status 2004)",
+                        "schema": {
+                            "$ref": "#/definitions/main.ocpiResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Mock CPO did not answer properly (OCPI status 3001)",
+                        "schema": {
+                            "$ref": "#/definitions/main.ocpiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/ocpi/versions": {
+            "get": {
+                "description": "discovery step. No token needed, because a partner that has not registered yet has no token.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "discovery"
+                ],
+                "summary": "list the ocpi versions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.ocpiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/credentials.Version"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "credentials.BusinessDetails": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "website": {
+                    "type": "string"
+                }
+            }
+        },
+        "credentials.Credentials": {
+            "type": "object",
+            "properties": {
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/credentials.CredentialsRole"
+                    }
+                },
+                "token": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "credentials.CredentialsRole": {
+            "type": "object",
+            "properties": {
+                "business_details": {
+                    "$ref": "#/definitions/credentials.BusinessDetails"
+                },
+                "endpoints": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/credentials.Endpoint"
+                    }
+                },
+                "party": {
+                    "$ref": "#/definitions/credentials.Party"
+                },
+                "role": {
+                    "description": "CPO, EMSP, HUB, NAP, ...",
+                    "type": "string"
+                }
+            }
+        },
+        "credentials.Endpoint": {
+            "type": "object",
+            "properties": {
+                "identifier": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "credentials.Party": {
+            "type": "object",
+            "properties": {
+                "country_code": {
+                    "type": "string"
+                },
+                "party_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "credentials.Version": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.ocpiCoords": {
+            "type": "object",
+            "properties": {
+                "latitude": {
+                    "type": "string"
+                },
+                "longitude": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.ocpiLocation": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "coordinates": {
+                    "$ref": "#/definitions/main.ocpiCoords"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "evses": {
+                    "description": "not filled in yet (toOCPILocation never sets it), so it never appears in the reply.",
+                    "type": "array",
+                    "items": {}
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_updated": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.ocpiResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "status_code": {
+                    "type": "integer"
+                },
+                "status_message": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "TokenAuth": {
+            "description": "Send the header as: Token \u003cbase64 of the token\u003e. Two tokens are accepted: the bootstrap token from config, and the token this server gave the partner at registration.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

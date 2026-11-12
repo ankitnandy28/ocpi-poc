@@ -1,0 +1,242 @@
+basePath: /
+definitions:
+  credentials.BusinessDetails:
+    properties:
+      name:
+        type: string
+      website:
+        type: string
+    type: object
+  credentials.Credentials:
+    properties:
+      roles:
+        items:
+          $ref: '#/definitions/credentials.CredentialsRole'
+        type: array
+      token:
+        type: string
+      url:
+        type: string
+    type: object
+  credentials.CredentialsRole:
+    properties:
+      business_details:
+        $ref: '#/definitions/credentials.BusinessDetails'
+      endpoints:
+        items:
+          $ref: '#/definitions/credentials.Endpoint'
+        type: array
+      party:
+        $ref: '#/definitions/credentials.Party'
+      role:
+        description: CPO, EMSP, HUB, NAP, ...
+        type: string
+    type: object
+  credentials.Endpoint:
+    properties:
+      identifier:
+        type: string
+      role:
+        type: string
+      url:
+        type: string
+    type: object
+  credentials.Party:
+    properties:
+      country_code:
+        type: string
+      party_id:
+        type: string
+    type: object
+  credentials.Version:
+    properties:
+      url:
+        type: string
+      version:
+        type: string
+    type: object
+  main.ocpiCoords:
+    properties:
+      latitude:
+        type: string
+      longitude:
+        type: string
+    type: object
+  main.ocpiLocation:
+    properties:
+      address:
+        type: string
+      city:
+        type: string
+      coordinates:
+        $ref: '#/definitions/main.ocpiCoords'
+      country:
+        type: string
+      evses:
+        description: not filled in yet (toOCPILocation never sets it), so it never
+          appears in the reply.
+        items: {}
+        type: array
+      id:
+        type: string
+      last_updated:
+        type: string
+      name:
+        type: string
+    type: object
+  main.ocpiResponse:
+    properties:
+      data: {}
+      status_code:
+        type: integer
+      status_message:
+        type: string
+      timestamp:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 'The OCPI 2.3.0 server of the learning project. It sits between the
+    eMSP and the Mock CPO. Every reply uses the OCPI wrapper: status_code, status_message,
+    timestamp, data.'
+  title: ocpi server api
+  version: "1.0"
+paths:
+  /ocpi/2.3.0:
+    get:
+      description: 'no token needed. data is an object: version, plus endpoints (identifier,
+        role, url) for credentials and locations.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ocpiResponse'
+      summary: list modules of version 2.3.0
+      tags:
+      - discovery
+  /ocpi/2.3.0/credentials:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.ocpiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/credentials.Credentials'
+              type: object
+        "401":
+          description: Invalid or missing token (OCPI status 2004)
+          schema:
+            $ref: '#/definitions/main.ocpiResponse'
+      security:
+      - TokenAuth: []
+      summary: this will get this server's credentials
+      tags:
+      - credentials
+  /ocpi/2.3.0/locations:
+    get:
+      description: fetched all locations from the Mock CPO, keeps those inside the
+        date range, then returns one page. The date filter uses the CPO's last_updated
+        value, but the last_updated in each returned location is the time of this
+        request. date_from and date_to are not copied into the Link header.
+      parameters:
+      - description: Only locations updated on or after this time. RFC 3339, for example
+          2025-01-01T00:00:00Z. A badly written value gives 400.
+        in: query
+        name: date_from
+        type: string
+      - description: Only locations updated on or before this time. RFC 3339, for
+          example 2025-01-01T00:00:00Z. A badly written value gives 400.
+        in: query
+        name: date_to
+        type: string
+      - default: 0
+        description: Number of locations to skip. Invalid values are ignored.
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      - default: 10
+        description: Page size. Invalid values are ignored; values above 100 become
+          100.
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            Link:
+              description: URLs of the next and previous pages, rel=next and rel=prev.
+                Empty when everything fits on one page.
+              type: string
+            X-Total-Count:
+              description: How many locations match, before paging
+              type: string
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.ocpiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/main.ocpiLocation'
+                  type: array
+              type: object
+        "400":
+          description: Invalid date_from or date_to (OCPI status 2001)
+          schema:
+            $ref: '#/definitions/main.ocpiResponse'
+        "401":
+          description: Invalid or missing token (OCPI status 2004)
+          schema:
+            $ref: '#/definitions/main.ocpiResponse'
+        "502":
+          description: Mock CPO did not answer properly (OCPI status 3001)
+          schema:
+            $ref: '#/definitions/main.ocpiResponse'
+      security:
+      - tokenAuth: []
+      summary: list the locations
+      tags:
+      - locations
+  /ocpi/versions:
+    get:
+      description: discovery step. No token needed, because a partner that has not
+        registered yet has no token.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.ocpiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/credentials.Version'
+                  type: array
+              type: object
+      summary: list the ocpi versions
+      tags:
+      - discovery
+securityDefinitions:
+  TokenAuth:
+    description: 'Send the header as: Token <base64 of the token>. Two tokens are
+      accepted: the bootstrap token from config, and the token this server gave the
+      partner at registration.'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

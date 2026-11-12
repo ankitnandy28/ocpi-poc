@@ -52,15 +52,17 @@ The eMSP also exposes `/emsp/state`, which reports its own registration status. 
 
 | Service | Raw spec | Viewer |
 |---|---|---|
+| Service | Raw spec | Viewer |
+|---|---|---|
+| OCPI server | [ocpi_swagger.yaml](https://raw.githubusercontent.com/ankitnandy28/ocpi-poc/main/docs/ocpi/ocpi_swagger.yaml) | [Open](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/ankitnandy28/ocpi-poc/main/docs/ocpi/ocpi_swagger.yaml) |
 | Mock CPO | [cpo_swagger.yaml](https://raw.githubusercontent.com/ankitnandy28/ocpi-poc/main/docs/cpo/cpo_swagger.yaml) | [Open](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/ankitnandy28/ocpi-poc/main/docs/cpo/cpo_swagger.yaml) |
 | Mock eMSP | [swagger.yaml](https://raw.githubusercontent.com/ankitnandy28/ocpi-poc/main/docs/emsp/swagger.yaml) | [Open](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/ankitnandy28/ocpi-poc/main/docs/emsp/swagger.yaml) |
 
-Live pages (after `.\start-all.ps1`): http://localhost:8081/swagger/index.html and http://localhost:8083/swagger/index.html
+Live pages (after `.\start-all.ps1`): http://localhost:8081/swagger/index.html, http://localhost:8083/swagger/index.html and http://localhost:8080/swagger/index.html
 
 
 I want to add this in readme.md;
 Can you suggest me by specifying exactly where it is better to add the above lines to readme.md file? DO not make any code, or file changes. Only tell me first
-
 ## Stopping
 
 Press **Ctrl+C** in each program's window.

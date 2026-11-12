@@ -12,9 +12,21 @@ import (
 	"strings"
 	"time"
 
+	_ "example.com/ocpi-poc/docs/ocpi" // swagger files made by "swag init"; _ imports it only so it registers itself.
 	"example.com/ocpi-poc/internal/config"
 	"example.com/ocpi-poc/internal/credentials"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
+
+// @title           ocpi server api
+// @version         1.0
+// @description     The OCPI 2.3.0 server of the learning project. It sits between the eMSP and the Mock CPO. Every reply uses the OCPI wrapper: status_code, status_message, timestamp, data.
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey TokenAuth
+// @in header
+// @name Authorization
+// @description Send the header as: Token <base64 of the token>. Two tokens are accepted: the bootstrap token from config, and the token this server gave the partner at registration.
 
 //Types for the ocpi replies to be sent
 
@@ -360,6 +372,22 @@ func withinDateRange(lastUpdated string, from, to time.Time) bool {
 // 2)Keep only those inside the date range (if given)
 // 3)Cut out one page, using offset and limit
 // 4)Convert that page to ocpi format and send it with the paging headers
+// @Summary      list the locations
+// @Description  fetched all locations from the Mock CPO, keeps those inside the date range, then returns one page. The date filter uses the CPO's last_updated value, but the last_updated in each returned location is the time of this request. date_from and date_to are not copied into the Link header.
+// @Tags         locations
+// @Produce      json
+// @Security     tokenAuth
+// @Param        date_from query string false "Only locations updated on or after this time. RFC 3339, for example 2025-01-01T00:00:00Z. A badly written value gives 400."
+// @Param        date_to   query string false "Only locations updated on or before this time. RFC 3339, for example 2025-01-01T00:00:00Z. A badly written value gives 400."
+// @Param        offset    query int    false "Number of locations to skip. Invalid values are ignored." default(0) minimum(0)
+// @Param        limit     query int    false "Page size. Invalid values are ignored; values above 100 become 100." default(10) minimum(1) maximum(100)
+// @Success      200 {object} ocpiResponse{data=[]ocpiLocation}
+// @Header       200 {string} X-Total-Count "How many locations match, before paging"
+// @Header       200 {string} Link "URLs of the next and previous pages, rel=next and rel=prev. Empty when everything fits on one page."
+// @Failure      400 {object} ocpiResponse "Invalid date_from or date_to (OCPI status 2001)"
+// @Failure      401 {object} ocpiResponse "Invalid or missing token (OCPI status 2004)"
+// @Failure      502 {object} ocpiResponse "Mock CPO did not answer properly (OCPI status 3001)"
+// @Router       /ocpi/2.3.0/locations [get]
 func listOCPILocations(w http.ResponseWriter, r *http.Request) {
 	all, err := fetchCPOLocations()
 	if err != nil {
@@ -445,7 +473,12 @@ func buildLink(r *http.Request, offset, limit, total int) string {
 // getVersions answers GET /ocpi/versions, which is the list of ocpi versions this server supports.
 // it is deliberately NOT behind requireToken.
 // a party that has not registered has no token yet, and this is the function needed to find out how to register.
-
+// @Summary      list the ocpi versions
+// @Description  discovery step. No token needed, because a partner that has not registered yet has no token.
+// @Tags         discovery
+// @Produce      json
+// @Success      200 {object} ocpiResponse{data=[]credentials.Version}
+// @Router       /ocpi/versions [get]
 func getVersions(w http.ResponseWriter, r *http.Request) {
 	ok(w, []credentials.Version{
 		{
@@ -460,7 +493,12 @@ func getVersions(w http.ResponseWriter, r *http.Request) {
 // an emsp reads it to find out where credentials and locations live.
 // Role of RECEIVER = this server accepts requests there.
 // Role of SENDER = this server provides data there.
-
+// @Summary      list modules of version 2.3.0
+// @Description  no token needed. data is an object: version, plus endpoints (identifier, role, url) for credentials and locations.
+// @Tags         discovery
+// @Produce      json
+// @Success      200 {object} ocpiResponse
+// @Router       /ocpi/2.3.0 [get]
 func getModules(w http.ResponseWriter, r *http.Request) {
 	ok(w, map[string]any{
 		"version": "2.3.0",
@@ -531,12 +569,31 @@ func ourCredentials() credentials.Credentials {
 }
 
 // getCredentials answers GET /credentials. It shows this server's details. Also it needs a valid token.
+// @Summary      this will get this server's credentials
+// @Tags         credentials
+// @Produce      json
+// @Security     TokenAuth
+// @Success      200 {object} ocpiResponse{data=credentials.Credentials}
+// @Failure      401 {object} ocpiResponse "Invalid or missing token (OCPI status 2004)"
+// @Router       /ocpi/2.3.0/credentials [get]
 func getCredentials(w http.ResponseWriter, r *http.Request) {
 	ok(w, ourCredentials())
 }
 
 // postCredentials answers POST /credentials, which is basically first-time registration.
 // if a partner is already registered, need to reply 409 with status 2001. The caller should use PUT instead.
+// @Summary      registering a partner
+// @Description  first time registration. The partner must offer "locations" endpoint, or else reply is HTTP 200 with OCPI status 3003. The token in the reply is the plain token; Base64-encode it for the Authorization header.
+// @Tags         credentials
+// @Accept       json
+// @Produce      json
+// @Security     TokenAuth
+// @Param        credentials body credentials.Credentials true "The partner's credentials"
+// @Success      200 {object} ocpiResponse{data=credentials.Credentials}
+// @Failure      400 {object} ocpiResponse "Invalid JSON or missing required field (OCPI status 2002)"
+// @Failure      401 {object} ocpiResponse "Invalid or missing token (OCPI status 2004)"
+// @Failure      409 {object} ocpiResponse "Already registered; use PUT (OCPI status 2001)"
+// @Router       /ocpi/2.3.0/credentials [post]
 
 func postCredentials(w http.ResponseWriter, r *http.Request) {
 	if credStore.IsRegistered() {
@@ -549,6 +606,19 @@ func postCredentials(w http.ResponseWriter, r *http.Request) {
 
 // putCredentials answers PUT /credentials will replace the registration and gives a new token.
 // if nobody is registered yet, then reply 405. The caller should use POST first.
+// @Summary      replace the registration and get a new token
+// @Description  same body and reply as POST. The partner must offer a "locations" endpoint, otherwise the reply is HTTP 200 with OCPI status 3003.
+// @Tags         credentials
+// @Accept       json
+// @Produce      json
+// @Security     TokenAuth
+// @Param        credentials body credentials.Credentials true "The partner's credentials"
+// @Success      200 {object} ocpiResponse{data=credentials.Credentials}
+// @Failure      400 {object} ocpiResponse "Invalid JSON or missing required field (OCPI status 2002)"
+// @Failure      401 {object} ocpiResponse "Invalid or missing token (OCPI status 2004)"
+// @Failure      405 {object} ocpiResponse "Not registered yet; use POST first (OCPI status 2002)"
+// @Router       /ocpi/2.3.0/credentials [put]
+
 func putCredentials(w http.ResponseWriter, r *http.Request) {
 	if !credStore.IsRegistered() {
 		fail(w, http.StatusMethodNotAllowed, credentials.StatusNotEnoughInfo,
@@ -616,6 +686,15 @@ func handleRegisterOrRotate(w http.ResponseWriter, r *http.Request, rotating boo
 
 // deleteCredentials answers DELETE /credentials. It unregisters the partner.
 // doing this forgets their details and tokens. It always replies success, even if nobody was registered.
+// @Summary      This will "unregister" the partner
+// @Description  it forgets the partner's details and token. Always succeeds, even if nobody was registered.
+// @Tags         credentials
+// @Produce      json
+// @Security     TokenAuth
+// @Success      200 {object} ocpiResponse
+// @Failure      401 {object} ocpiResponse "Invalid or missing token (OCPI status 2004)"
+// @Router       /ocpi/2.3.0/credentials [delete]
+
 func deleteCredentials(w http.ResponseWriter, r *http.Request) {
 	// next remember who it was (for the log), then need to clear the store.
 	peer := credStore.Peer()
@@ -646,6 +725,11 @@ func main() {
 	mux.HandleFunc("POST /ocpi/2.3.0/credentials", requireToken(postCredentials))
 	mux.HandleFunc("PUT /ocpi/2.3.0/credentials", requireToken(putCredentials))
 	mux.HandleFunc("DELETE /ocpi/2.3.0/credentials", requireToken(deleteCredentials))
+	// next is swagger web page. "ocpi" must match the instance name used when the docs were generated.
+	mux.Handle("GET /swagger/", httpSwagger.Handler(
+		httpSwagger.InstanceName("ocpi"),
+	))
+
 	// next printing the address, then starting the server. ListenAndServe keeps running until i press Ctrl+C.
 	// if it fails (example if the port is already in use), log.Fatal prints the error and exits.
 
