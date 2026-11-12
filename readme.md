@@ -1,8 +1,12 @@
 # OCPI Proof of Concept
 
-A small Go project that simulates how a charging point operator (CPO) shares charging location data with an e-mobility service provider (eMSP) using the OCPI protocol (version 2.3.0).
+A small Go project that simulates how a charging point operator (CPO) shares charging location data with an e-mobility service provider (eMSP) using the OCPI protocol (I used version 2.3.0).
 
 This is a learning POC, not a production or fully OCPI-compliant system.
+
+## Prerequisites
+- made and tested with go version go1.24.1 windows/amd64
+- [`swag`](https://github.com/swaggo/swag) — only needed to regenerate the Swagger files
 
 ## Components
 
@@ -42,6 +46,8 @@ Start the OCPI server and Mock CPO before the eMSP. The eMSP needs both.
 - Mock CPO: http://localhost:8081/swagger/index.html
 - Mock eMSP: http://localhost:8083/swagger/index.html
 
+The eMSP also exposes `/emsp/state`, which reports its own registration status. It is deliberately left out of the generated docs.
+
 ## Stopping
 
 Press **Ctrl+C** in each program's window.
@@ -80,6 +86,6 @@ ocpi-poc/
 
 - Data is stored in memory. Restarting the OCPI server clears all registrations.
 - Credentials and tokens are fixed demo values, so they are not secure.
-- Only a small part of OCPI 2.3.0 is implemented.
+- Only a small part of OCPI is implemented — locations and credentials only; sessions, CDRs, and commands are not done yet.
 - Port numbers are set in `internal/config/config.go`.
 - If you see `bind: Only one usage of each socket address`, a previous program is still running on that port. Close it and try again.
