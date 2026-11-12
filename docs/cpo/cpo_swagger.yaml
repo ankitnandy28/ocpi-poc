@@ -59,18 +59,6 @@ info:
 paths:
   /api/locations:
     get:
-      description: Returns every charging location the CPO knows about
-      parameters:
-      - description: Return locations updated on or after this date (YYYY-MM-DD)
-        in: query
-        name: date_from
-        type: string
-      - description: Return locations updated on or before this date (YYYY-MM-DD)
-        in: query
-        name: date_to
-        type: string
-      produces:
-      - application/json
       responses:
         "200":
           description: OK
@@ -78,9 +66,6 @@ paths:
             items:
               $ref: '#/definitions/main.Location'
             type: array
-      summary: List all locations
-      tags:
-      - locations
   /api/locations/{id}:
     get:
       description: Returns one location by its ID

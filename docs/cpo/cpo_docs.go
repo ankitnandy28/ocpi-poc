@@ -17,28 +17,6 @@ const docTemplatecpo = `{
     "paths": {
         "/api/locations": {
             "get": {
-                "description": "Returns every charging location the CPO knows about",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "locations"
-                ],
-                "summary": "List all locations",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Return locations updated on or after this date (YYYY-MM-DD)",
-                        "name": "date_from",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Return locations updated on or before this date (YYYY-MM-DD)",
-                        "name": "date_to",
-                        "in": "query"
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "OK",

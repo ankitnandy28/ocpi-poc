@@ -132,8 +132,9 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 // @Description  Returns every charging location the CPO knows about
 // @Tags         locations
 // @Produce      json
-// @Param        date_from query string false "Return locations updated on or after this date (YYYY-MM-DD)"
-// @Param        date_to   query string false "Return locations updated on or before this date (YYYY-MM-DD)"
+// @Param        date_from query string false "Accepted but not applied yet; all locations are returned. Intended format: RFC 3339, for example 2025-01-01T00:00:00Z"
+// @Param        date_to   query string false "Accepted but not applied yet; all locations are returned. Intended format: RFC 3339, for example 2025-01-01T00:00:00Z"
+
 // @Success      200 {array} Location
 // @Router       /api/locations [get]
 func listLocations(w http.ResponseWriter, r *http.Request) {
