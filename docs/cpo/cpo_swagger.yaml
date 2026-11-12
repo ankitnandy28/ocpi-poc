@@ -1,0 +1,107 @@
+basePath: /
+definitions:
+  main.Connector:
+    properties:
+      id:
+        type: string
+      max_kw:
+        type: number
+      power_type:
+        type: string
+      standard:
+        type: string
+    type: object
+  main.EVSE:
+    properties:
+      connectors:
+        items:
+          $ref: '#/definitions/main.Connector'
+        type: array
+      status:
+        type: string
+      uid:
+        type: string
+    type: object
+  main.Location:
+    properties:
+      address:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      evses:
+        items:
+          $ref: '#/definitions/main.EVSE'
+        type: array
+      id:
+        type: string
+      last_updated:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      name:
+        type: string
+    type: object
+  main.errorReply:
+    properties:
+      error:
+        type: string
+    type: object
+host: localhost:8081
+info:
+  contact: {}
+  description: Fake charging station data for the OCPI learning project.
+  title: Mock CPO API
+  version: "1.0"
+paths:
+  /api/locations:
+    get:
+      description: Returns every charging location the CPO knows about
+      parameters:
+      - description: Return locations updated on or after this date (YYYY-MM-DD)
+        in: query
+        name: date_from
+        type: string
+      - description: Return locations updated on or before this date (YYYY-MM-DD)
+        in: query
+        name: date_to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Location'
+            type: array
+      summary: List all locations
+      tags:
+      - locations
+  /api/locations/{id}:
+    get:
+      description: Returns one location by its ID
+      parameters:
+      - description: Location ID, for example LOC01
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Location'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.errorReply'
+      summary: Get one location
+      tags:
+      - locations
+swagger: "2.0"

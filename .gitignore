@@ -1,0 +1,30 @@
+﻿# Build output
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test/build artifacts
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# Local environment and secrets
+.env
+.env.local
+*.local
+
+# Editor / OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Logs
+*.log
+
+# Backup files
+*.bak

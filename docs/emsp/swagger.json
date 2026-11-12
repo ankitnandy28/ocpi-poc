@@ -1,0 +1,96 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Fetches charging locations through the OCPI server.",
+        "title": "Mock eMSP API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8083",
+    "basePath": "/",
+    "paths": {
+        "/emsp/locations": {
+            "get": {
+                "description": "Calls the OCPI server and returns the locations received.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "emsp-locations"
+                ],
+                "summary": "Get locations through the OCPI server",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.emspReply"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.errorReply"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/main.errorReply"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.emspReply": {
+            "type": "object",
+            "properties": {
+                "location_count": {
+                    "type": "integer"
+                },
+                "location_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ocpi_reply": {
+                    "$ref": "#/definitions/main.ocpiLocationsReply"
+                },
+                "received_from": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.errorReply": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.ocpiLocationsReply": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                },
+                "status_code": {
+                    "type": "integer"
+                },
+                "status_message": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
