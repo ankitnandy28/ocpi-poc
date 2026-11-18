@@ -72,14 +72,14 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 func discoverVersions() (string, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	// ask the cpo for its list of versions.
+	// requesting versions from ocpi server
 	resp, err := client.Get(config.CPOBaseURL() + "/ocpi/versions")
 	if err != nil {
 		return "", fmt.Errorf("versions request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// the part of the reply we need: a list of versions, each with a url.
+	// the part of the reply which is needed: a list of versions, each with a url.
 	var reply struct {
 		Data []struct {
 			Version string `json:"version"`
